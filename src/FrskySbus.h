@@ -1,34 +1,40 @@
 /*
 FrSky SBUS parser based off the SBUS.h library
 from Brian R Tayload
-brian.taulor@borderflight.com
+brian.taylor@borderflight.com
+https://github.com/bolderflight/SBUS
 
-Created and maintained by Greg Gradwell
-greg.gradwell@kittyhawk.aero
+
+Created and maintained by COPPERPUNK
+greg@copperpunk.com
 */
 
-#ifndef FRSKY_H
-#define FRSKY_H
+#ifndef FRSKYSBUS_H
+#define FRSKYSBUS_H
 
 #include "Arduino.h"
 
-class FrSky {
+class FrskySbus {
     public: 
-        FrSky(Stream &bus);
-		FrSky(Stream &bus, Stream &forwarding_bus);
+        FrskySbus(Stream &bus);
+		FrskySbus(Stream &bus, Stream &forwarding_bus);
         void begin();
-        bool read(uint16_t* channels, bool* failsafe, bool* lostFrame);
-        ~FrSky();
+        bool checkForNewMessage();
+		void getNewMessage(uint16_t channels[], bool &failsafe, bool &lostFrame);
+		void setValidFrameCountMin(uint valid_frame_count_min);
+		 
+		static const int kNumChannelsMax = 16;
     private:
+		bool parse();
+
 		bool forward_bytes_ = false;
         const uint32_t kSbusBaud = 100000;
 		const uint8_t kSbusHeader = 0x0F;
 		const uint8_t kSbusFooter = 0x00;
 		const uint8_t kSbusLostFrame = 0x04;
 		const uint8_t kSbusFailSafe = 0x08;
-		// const uint8_t _sbus2Footer = 0x04;
-		// const uint8_t _sbus2Mask = 0x0F;
-		uint8_t parser_state_, prev_byte_ = kSbusFooter, cur_byte_;
+		uint8_t parser_state_ = kSbusFooter;
+		uint8_t prev_byte_ = kSbusFooter;
 		static const uint8_t kPayloadSize = 24;
 		uint8_t payload_[kPayloadSize];
 		static const uint8_t kForwardBufferSize = 26;
@@ -36,9 +42,8 @@ class FrSky {
 		
 		Stream* bus_;
 		Stream* forwarding_bus_;
-		const uint kValidFrameCountMin = 3;
+		uint valid_frame_count_min_ = 3;
 		uint8_t valid_frame_count_ = 0;
-		bool parse();
 };
 
 #endif
