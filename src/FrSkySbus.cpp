@@ -19,6 +19,10 @@ FrskySbus::FrskySbus(Stream &bus, Stream &forwarding_bus)
 void FrskySbus::begin()
 {
 	static_cast<HardwareSerial *>(bus_)->begin(kSbusBaud, SERIAL_8E2);
+	while (bus_->available() > 0)
+	{
+		bus_->read();
+	}
 }
 
 bool FrskySbus::checkForNewMessage()
@@ -26,42 +30,42 @@ bool FrskySbus::checkForNewMessage()
 	return parse();
 }
 
-void FrskySbus::getNewMessage(uint16_t channels[], bool &failsafe, bool &lostFrame)
+void FrskySbus::storeNewMessage()
 {
 	// 16 channels of 11 bit data
-	channels[0] = (uint16_t)((payload_[0] | payload_[1] << 8) & 0x07FF);
-	channels[1] = (uint16_t)((payload_[1] >> 3 | payload_[2] << 5) & 0x07FF);
-	channels[2] = (uint16_t)((payload_[2] >> 6 | payload_[3] << 2 | payload_[4] << 10) & 0x07FF);
-	channels[3] = (uint16_t)((payload_[4] >> 1 | payload_[5] << 7) & 0x07FF);
-	channels[4] = (uint16_t)((payload_[5] >> 4 | payload_[6] << 4) & 0x07FF);
-	channels[5] = (uint16_t)((payload_[6] >> 7 | payload_[7] << 1 | payload_[8] << 9) & 0x07FF);
-	channels[6] = (uint16_t)((payload_[8] >> 2 | payload_[9] << 6) & 0x07FF);
-	channels[7] = (uint16_t)((payload_[9] >> 5 | payload_[10] << 3) & 0x07FF);
-	channels[8] = (uint16_t)((payload_[11] | payload_[12] << 8) & 0x07FF);
-	channels[9] = (uint16_t)((payload_[12] >> 3 | payload_[13] << 5) & 0x07FF);
-	channels[10] = (uint16_t)((payload_[13] >> 6 | payload_[14] << 2 | payload_[15] << 10) & 0x07FF);
-	channels[11] = (uint16_t)((payload_[15] >> 1 | payload_[16] << 7) & 0x07FF);
-	channels[12] = (uint16_t)((payload_[16] >> 4 | payload_[17] << 4) & 0x07FF);
-	channels[13] = (uint16_t)((payload_[17] >> 7 | payload_[18] << 1 | payload_[19] << 9) & 0x07FF);
-	channels[14] = (uint16_t)((payload_[19] >> 2 | payload_[20] << 6) & 0x07FF);
-	channels[15] = (uint16_t)((payload_[20] >> 5 | payload_[21] << 3) & 0x07FF);
+	_channels[0] = (uint16_t)((payload_[0] | payload_[1] << 8) & 0x07FF);
+	_channels[1] = (uint16_t)((payload_[1] >> 3 | payload_[2] << 5) & 0x07FF);
+	_channels[2] = (uint16_t)((payload_[2] >> 6 | payload_[3] << 2 | payload_[4] << 10) & 0x07FF);
+	_channels[3] = (uint16_t)((payload_[4] >> 1 | payload_[5] << 7) & 0x07FF);
+	_channels[4] = (uint16_t)((payload_[5] >> 4 | payload_[6] << 4) & 0x07FF);
+	_channels[5] = (uint16_t)((payload_[6] >> 7 | payload_[7] << 1 | payload_[8] << 9) & 0x07FF);
+	_channels[6] = (uint16_t)((payload_[8] >> 2 | payload_[9] << 6) & 0x07FF);
+	_channels[7] = (uint16_t)((payload_[9] >> 5 | payload_[10] << 3) & 0x07FF);
+	_channels[8] = (uint16_t)((payload_[11] | payload_[12] << 8) & 0x07FF);
+	_channels[9] = (uint16_t)((payload_[12] >> 3 | payload_[13] << 5) & 0x07FF);
+	_channels[10] = (uint16_t)((payload_[13] >> 6 | payload_[14] << 2 | payload_[15] << 10) & 0x07FF);
+	_channels[11] = (uint16_t)((payload_[15] >> 1 | payload_[16] << 7) & 0x07FF);
+	_channels[12] = (uint16_t)((payload_[16] >> 4 | payload_[17] << 4) & 0x07FF);
+	_channels[13] = (uint16_t)((payload_[17] >> 7 | payload_[18] << 1 | payload_[19] << 9) & 0x07FF);
+	_channels[14] = (uint16_t)((payload_[19] >> 2 | payload_[20] << 6) & 0x07FF);
+	_channels[15] = (uint16_t)((payload_[20] >> 5 | payload_[21] << 3) & 0x07FF);
 
 	if (payload_[22] & kSbusLostFrame)
 	{
-		lostFrame = true;
+		_lost_frame = true;
 	}
 	else
 	{
-		lostFrame = false;
+		_lost_frame = false;
 	}
 
 	if (payload_[22] & kSbusFailSafe)
 	{
-		failsafe = true;
+		_failsafe_active = true;
 	}
 	else
 	{
-		failsafe = false;
+		_failsafe_active = false;
 	}
 }
 
@@ -108,6 +112,7 @@ bool FrskySbus::parse()
 					if (valid_frame_count_ > valid_frame_count_min_)
 					{
 						valid_frame_count_--; // Subtract one to keep from overflowing the uint8_t byte
+						storeNewMessage();
 						return true;
 					}
 					return false;
@@ -126,7 +131,7 @@ bool FrskySbus::parse()
 	return false;
 }
 
-void FrskySbus::setValidFrameCountMin(uint valid_frame_count_min)
+void FrskySbus::setValidFrameCountMin(uint8_t valid_frame_count_min)
 {
 	valid_frame_count_min_ = valid_frame_count_min;
 }

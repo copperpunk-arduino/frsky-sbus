@@ -1,7 +1,7 @@
 #include "FrskySbus.h"
 
 #define debug_port Serial
-#define sbus_port Serial1
+#define sbus_port Serial2
 
 FrskySbus frsky_(sbus_port);
 bool failsafe_ = false;
@@ -23,7 +23,7 @@ void loop()
 {
     if (frsky_.checkForNewMessage())
     {
-        frsky_.getNewMessage(servo_channels_, failsafe_, lost_frame_);
+        // frsky_.getNewMessage(servo_channels_, failsafe_, lost_frame_);
         PrintChannels();
     }
 }
@@ -33,7 +33,7 @@ void PrintChannels()
     debug_port.print("Rx: ");
     for (int i = 0; i < NUM_CHANNELS; i++)
     {
-        debug_port.print(servo_channels_[i]);
+        debug_port.print(frsky_.getChannelValue[i]);
         debug_port.print(",");
     }
     debug_port.println();
